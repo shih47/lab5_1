@@ -1,98 +1,50 @@
-.syntax unified
+//============================================================================
+// ECE 362 Lab Experiment 5
+// Basic Timers
+//============================================================================
 .cpu cortex-m0
-.fpu softvfp
 .thumb
+.syntax unified
 
-//==================================================================
-// ECE 362 Lab Experiment 4
-// Interrupts
-//==================================================================
-
-// RCC config registers
+// RCC configuration registers
 .equ  RCC,      0x40021000
 .equ  AHBENR,   0x14
 .equ  GPIOCEN,  0x00080000
 .equ  GPIOBEN,  0x00040000
 .equ  GPIOAEN,  0x00020000
-.equ  APB2ENR,  0x18
-.equ  SYSCFGCOMPEN, 1
+.equ  APB1ENR,  0x1c
+.equ  TIM6EN,   1<<4
+.equ  TIM7EN,   1<<5
 
-// GPIO config registers
-.equ  GPIOC,    0x48000800
-.equ  GPIOB,    0x48000400
-.equ  GPIOA,    0x48000000
-.equ  MODER,    0x00
-.equ  PUPDR,    0x0c
-.equ  IDR,      0x10
-.equ  ODR,      0x14
-.equ  BSRR,     0x18
-.equ  BRR,      0x28
-
-.equ IOPCEN, 0x80000
-.equ pupdrc, 0xaa
-.equ output4_9, 0x55500
-
-.equ IOPBEN, 0x40000
-.equ pupdrb, 0xa0
-.equ output8_11, 0x550000
-
-
-
-// SYSCFG config registers
-.equ SYSCFG, 0x40010000
-.equ EXTICR1, 0x08
-.equ EXTICR2, 0x0c
-.equ EXTICR3, 0x10
-.equ EXTICR4, 0x14
-
-// External interrupt config registers
-.equ EXTI,  0x40010400
-.equ IMR,   0
-.equ EMR,   0x4
-.equ RTSR,  0x8
-.equ FTSR,  0xc
-.equ SWIER, 0x10
-.equ PR,    0x14
-
-// Variables to register things for EXTI on pin 0
-.equ EXTI_RTSR_TR0, 1<<0
-.equ EXTI_IMR_MR0,  1<<0
-.equ EXTI_PR_PR0,   1<<0
-// Variables to register things for EXTI on pin 1
-.equ EXTI_RTSR_TR1, 1<<1
-.equ EXTI_IMR_MR1,  1<<1
-.equ EXTI_PR_PR1,   1<<1
-// Variables to register things for EXTI on pin 2
-.equ EXTI_RTSR_TR2, 1<<2
-.equ EXTI_IMR_MR2,  1<<2
-.equ EXTI_PR_PR2,   1<<2
-// Variables to register things for EXTI on pin 3
-.equ EXTI_RTSR_TR3, 1<<3
-.equ EXTI_IMR_MR3,  1<<3
-.equ EXTI_PR_PR3,   1<<3
-// Variables to register things for EXTI on pin 4
-.equ EXTI_RTSR_TR4, 1<<4
-.equ EXTI_IMR_MR4,  1<<4
-.equ EXTI_PR_PR4,   1<<4
-
-// SysTick counter variables....
-.equ STK, 0xe000e010
-.equ CSR, 0x0
-.equ RVR, 0x4
-.equ CVR, 0x8
-
-// NVIC config registers
+// NVIC configuration registers
 .equ NVIC, 0xe000e000
 .equ ISER, 0x100
 .equ ICER, 0x180
 .equ ISPR, 0x200
 .equ ICPR, 0x280
 .equ IPR,  0x400
-.equ EXTI0_1_IRQn,5  // External interrupt number for pins 0 and 1 is IRQ 5.
-.equ EXTI2_3_IRQn,6  // External interrupt number for pins 2 and 3 is IRQ 6.
-.equ EXTI4_15_IRQn,7 // External interrupt number for pins 4 - 15 is IRQ 7.
+.equ TIM6_DAC_IRQn, 17
+.equ TIM7_IRQn,     18
 
-// GPIO config registers
+// Timer configuration registers
+.equ TIM6, 0x40001000
+.equ TIM7, 0x40001400
+.equ TIM_CR1,  0x00
+.equ TIM_CR2,  0x04
+.equ TIM_DIER, 0x0c
+.equ TIM_SR,   0x10
+.equ TIM_EGR,  0x14
+.equ TIM_CNT,  0x24
+.equ TIM_PSC,  0x28
+.equ TIM_ARR,  0x2c
+
+// Timer configuration register bits
+.equ TIM_CR1_CEN,  1<<0
+.equ TIM_DIER_UDE, 1<<8
+.equ TIM_DIER_UIE, 1<<0
+.equ TIM_SR_UIF,   1<<0
+
+// GPIO configuration registers
 .equ  GPIOC,    0x48000800
 .equ  GPIOB,    0x48000400
 .equ  GPIOA,    0x48000000
@@ -103,442 +55,402 @@
 .equ  BSRR,     0x18
 .equ  BRR,      0x28
 
-//==========================================================
-// nano_wait
-.global nano_wait
-        nano_wait:
-            subs r0,#83
-            bgt  nano_wait
-            bx lr
-// Write the entire subroutine below.
-
-
-//==========================================================
-//initc
-// Enable the RCC clock for GPIO C and configure pins as
-// described in section 2.2.1.
-// Do not modify any other pin configuration.
-// Parameters: none
-// Write the entire subroutine below.
-.global initc
-initc:
-    push    {lr}
-    ldr r0, =RCC
-    ldr r1, [r0, #AHBENR]
-    ldr r2, =IOPCEN
-    orrs r1,r2
-    str r1, [r0,#AHBENR]
-
-    ldr r0, =GPIOC
-    ldr r1, [r0,#MODER]
-    movs r2, #0xff
-    bics r1,r2
-    str r1, [r0,#MODER]
-
-    ldr r1, [r0,#PUPDR]
-    movs r3, #0xff
-    bics r1,r3
-    ldr r2, =pupdrc
-    orrs r1,r2
-    str r1, [r0,#PUPDR]
-
-    ldr r1, [r0, #MODER]
-    ldr r3, =#0xfff00
-    bics r1,r3
-    ldr r2, =output4_9
-    orrs r1, r2
-    str r1, [r0, #MODER]
-
-    // End of student code
-    pop     {pc}
-
-
-
-//==========================================================
-// initb
-// Enable the RCC clock for GPIO B and configure pins as
-// described in section 2.2.2
-// Do not modify any other pin configuration.
-// Parameters: none
-// Write the entire subroutine below.
-.global initb
-initb:
-    push    {lr}
-    ldr r0,=RCC
-    ldr r1, [r0, #AHBENR]
-    ldr r2, =IOPBEN
-    orrs r1,r2
-    str r1, [r0,#AHBENR]
-
-    ldr r0, =GPIOB
-    ldr r1, [r0, #MODER]
-    ldr r3, =#0x3f3
-    bics r1, r3
-    str r1, [r0,#MODER]
-
-    ldr r1, [r0, #PUPDR]
-    ldr r3, =#0xf0
-    bics r1, r3
-    ldr r2, =pupdrb//PB2,PB3 pull down
-    orrs r1,r2
-    str r1, [r0,#PUPDR]
-
-    ldr r1, [r0, #MODER]
-    ldr r3, =0xff0000
-    bics r1,r3
-    ldr r2, =output8_11
-    orrs r1,r2
-    str r1, [r0, #MODER]
-
-
-
-//==========================================================
-// togglexn
-// Change the ODR value from 0 to 1 or 1 to 0 for a specified
-// pin of Port C.
-// Parameters: r0 holds the base address of the GPIO port
-//                to use
-//             r1 holds the pin number to toggle
-// Write the entire subroutine below.
-.global togglexn
-togglexn:
-    push    {lr}
-    ldr r2, [r0,#ODR]
-    movs r3,#1
-    lsls r3,r3,r1
-    eors r2,r3
-    str r2, [r0,#ODR]
-    pop        {pc}
-
-
-
-//==========================================================
-//  (autotest #??)
-// Write the EXTI interrupt handler for pins 0 and 1 below.
-// Copy the name from startup/startup_stm32.s, create a label
-// of that name below, declare it to be global, and declare
-// it to be a function.
-// It acknowledge the pending bit for pin 0, and it should
-// call togglexn(GPIOB, 8).
-.type EXTI0_1_IRQHandler, %function
-.global EXTI0_1_IRQHandler
-EXTI0_1_IRQHandler:
-    push    {lr}
-    ldr r3, =EXTI
-    movs r2,#1
-    str r2, [r3,#PR]
-
-    ldr r0, =GPIOB
-    movs r1, #8
-    bl togglexn
-    pop        {pc}
-
-//==========================================================
-//  (autotest #??)
-// Write the EXTI interrupt handler for pins 2-3 below.
-// It should acknowledge the pending bit for pin2, and it
-// should call togglexn(GPIOB, 9).
-.type EXTI2_3_IRQHandler, %function
-.global EXTI2_3_IRQHandler
-EXTI2_3_IRQHandler:
-    push    {lr}
-    ldr r3, =EXTI
-    movs r2,#0x4
-    str r2, [r3, #PR]
-
-    movs r1, #9
-    ldr r0, =GPIOB
-    bl togglexn
-    pop        {pc}
-
-
-//==========================================================
-//  (autotest #??)
-// Write the EXTI interrupt handler for pins 4-15 below.
-// It should acknowledge the pending bit for pin4, and it
-// should call togglxn(GPIOB, 10).
-.type EXTI4_15_IRQHandler, %function
-.global EXTI4_15_IRQHandler
-EXTI4_15_IRQHandler:
-    push    {lr}
-    ldr r3, =EXTI
-    movs r2,#0x10
-    str r2, [r3, #PR]
-
-    movs r1, #10
-    ldr r0, =GPIOB
-    bl togglexn
-    pop        {pc}
-
-
-//==========================================================
-// init_exti  (autotest #??)
-// (1) Enable the SYSCFG subsystem, and select Port B for
-//     pins 0, 2, 3, and 4.
-// (2) Configure the EXTI_RTSR register so that an EXTI
-//     interrupt is generated on the rising edge of
-//     pins 0, 2, 3, and 4.
-// (3) Configure the EXTI_IMR register so that the EXTI
-//     interrupts are unmasked for pins 2, 3, and 4.
-// (4) Enable the three interupts for EXTI pins 0-1, 2-3 and
-//     4-15. Don't enable any other interrupts.
-// Parameters: none
-.global init_exti
-init_exti:
-    push {lr}
-    // Student code goes below
-        ldr r0, =RCC
-        ldr r1, [r0, #APB2ENR]
-        movs r2, #0x1
-        orrs r1,r2//enable SYSCFG
-        str r1, [r0,#APB2ENR]
-
-        ldr r0, =SYSCFG
-        ldr r1, [r0, #EXTICR1]
-        ldr r2, =0x1101
-        orrs r1,r2
-        str r1, [r0,#EXTICR1]
-
-        ldr r0, =SYSCFG
-        ldr r1, [r0, #EXTICR2]
-        movs r2, #0x1
-        orrs r1, r2
-        str r1, [r0, #EXTICR2]
-
-        ldr r0, =EXTI
-        ldr r1, [r0, #RTSR]
-        ldr r2, =EXTI_RTSR_TR0
-        orrs r1, r2
-        str r1, [r0, #RTSR]
-
-        ldr r1, [r0, #RTSR]
-        ldr r2, =EXTI_RTSR_TR2
-        orrs r1, r2
-        str r1, [r0, #RTSR]
-
-        ldr r1, [r0, #RTSR]
-        ldr r2, =EXTI_RTSR_TR3
-        orrs r1, r2
-        str r1, [r0, #RTSR]
-
-        ldr r1, [r0, #RTSR]
-        ldr r2, =EXTI_RTSR_TR4
-        orrs r1, r2
-        str r1, [r0, #RTSR]
-
-
-        ldr r1, [r0, #IMR]
-        ldr r2, =EXTI_IMR_MR0
-        orrs r1,r2
-        str r1, [r0, #IMR]
-
-        ldr r1, [r0, #IMR]
-        ldr r2, =EXTI_IMR_MR2
-        orrs r1,r2
-        str r1, [r0, #IMR]
-
-        ldr r1, [r0, #IMR]
-        ldr r2, =EXTI_IMR_MR3
-        orrs r1,r2
-        str r1, [r0, #IMR]
-
-        ldr r1, [r0, #IMR]
-        ldr r2, =EXTI_IMR_MR4
-        orrs r1,r2
-        str r1, [r0, #IMR]
-
-
-        ldr  r2,=1<<EXTI0_1_IRQn
-        ldr  r0,=NVIC
-        ldr  r1,=ISER
-        str  r2,[r0,r1]
-
-        ldr  r2,=1<<EXTI2_3_IRQn
-        ldr  r0,=NVIC
-        ldr  r1,=ISER
-        str  r2,[r0,r1]
-
-        ldr  r2,=1<<EXTI4_15_IRQn
-        ldr  r0,=NVIC
-        ldr  r1,=ISER
-        str  r2,[r0,r1]
-
-
-    // Student code goes above
-    pop  {pc}
-
-
-//==========================================================
-// set_col
-// Set the specified column level to logic "high.
-// Set the other three three columns to logic "low".
-.global set_col
-//.type set_col, %function
-set_col:
-    push {r4-r7,lr}
-    movs r5,r0//let r5=col
-    ldr r0, =GPIOC
-    movs r2, #0xf//r2=0xf
-    movs r3, #20
-    lsls r2,r2,r3
-    str r2, [r0,#BSRR]
-    movs r3,#1
-    movs r4,#8
-    subs r4,r5//8-col,
-    lsls r3,r3,r4
-    str r3, [r0,#BSRR]
-    pop {r4-r7,pc}
-
-//==========================================================
-// The current_col variable.
-.data
-.global current_col
-current_col:
-        .word 1
-.text
-
-
-//==========================================================
-// SysTick_Handler
-// The ISR for the SysTick interrupt.
-//
-.global SysTick_Handler
-.type SysTick_Handler, %function
-SysTick_Handler:
-    push {r4-r7,lr}
-    // Student code goes below
-    ldr r0, =GPIOC
-    ldr r7, [r0, #IDR]//r7=GPIOC->IDR
-    movs r2, #0xf
-    ands r7,r2//row_val = r7
-
-    ldr r0, =GPIOB
-
-    ldr r5, =current_col
-    ldr r5, [r5]
-    if1:
-        movs r3,#1
-        cmp r5,r3
-        bne else1
-
-        movs r4,#0x8
-        ands r4,r7
-        movs r6, #0
-        cmp r4,r6
-        beq else1
-
-        movs r1, #8
-        bl togglexn
-        b end
-    else1:
-        movs r3,#2
-        cmp r5,r3
-        bne else2
-
-        movs r4, #0x4
-        ands r4,r7
-        movs r6, #0
-        cmp r4,r6
-        beq else2
-
-        movs r1,#9
-        bl togglexn
-        b end
-    else2:
-        movs r3,#3
-        cmp r5,r3
-        bne else3
-
-        movs r4, #0x2
-        ands r4,r7
-        movs r6,#0
-        cmp r4,r6
-        beq else3
-
-        movs r1,#10
-        bl togglexn
-        b end
-    else3:
-        movs r3,#4
-        cmp r5,r3
-        bne end
-
-        movs r4, #0x1
-        ands r4,r7
-        movs r6,#0
-        cmp r4,r6
-        beq end
-
-        movs r1,#11
-        bl togglexn
-
-    end:
-        adds r5,#1
-
-    if2:
-        movs r6, #4
-        cmp r5,r6
-        ble next
-        movs r5, #1
-
-    next:
-        ldr r1, =current_col
-        str r5, [r1]
-        movs r0, r5
-        bl set_col
-
-    // Student code goes above
-    pop  {r4-r7,pc}
-
-//==========================================================
-// init_systick
-// Enable the SysTick interrupt to occur every 0.5 seconds.
-// Parameters: none
-.global init_systick
-init_systick:
-    push {lr}
-    // Student code goes below
-    ldr r3, =STK
-    ldr r0, =375000-1
-    str r0, [r3, #RVR]
-
-    ldr  r1, [r3,#CSR]
-	ldr  r2, =0x3
+
+.equ IOPBEN, 0x40000
+.equ IOPCEN, 0x80000
+.equ out0_10, 0x155555
+.equ out4_7_9, 0x45500
+.equ in0_3, 0x00
+.equ plin0_3, 0xaa
+
+
+
+//============================================================================
+// void enable_ports(void) {
+//   // Set up the ports and pins exactly as directed.
+// }
+.global enable_ports
+enable_ports:
+
+ldr r0, =RCC
+ldr r1, [r0, #AHBENR]
+ldr r2, =IOBEN
+orrs r1,r2
+str r1, [r0, #AHBENR]//enable GPIOB
+
+ldr r0, =RCC
+ldr r1, [r0, #AHBENR]
+ldr r2, =IOCEN
+orrs r1,r2
+str r1, [r0, #AHBENR]//enable GPIOC
+
+ldr r0, =GPIOB
+ldr r1, [r0, #MODER]
+ldr r2, =out0_10
+orrs r1,r2
+str r1, [r0, #MODER]
+
+ldr r0, =GPIOC
+ldr r1, [r0, #MODER]
+ldr r2, =out4_7_9
+orrs r1, r2
+str r1, [r0, #MODER]
+
+ldr r0, =GPIOC
+ldr r1, [r0, #MODER]
+ldr r2, =in0_3
+orrs r1,r2
+str r1, [r0, #MODER]
+
+ldr r0 =GPIOC
+ldr r1, [r0, #PUPDR]
+ldr r2, plin0_3
+orrs r1,r2
+str r1, [r0, #PUPDR]
+
+
+
+
+//============================================================================
+// TIM6_ISR() {
+//   TIM6->SR &= ~TIM_SR_UIF
+//   if (GPIOC->ODR & (1<<9))
+//     GPIOC->BRR = 1<<9;
+//   else
+//     GPIOC->BSRR = 1<<9;
+// }
+.global TIM6_ISR
+TIM6_ISR:
+	push{r4-r7, lr}
+	ldr r0, TIM6
+	ldr r1, [r0, TIM_SR]
+	ldr r2, =TIM_SR_UIF
+	bics r1,r2
+	str r1, [r0, TIM_SR]
+	
+	if1:
+		ldr r3, =GPIOC
+		ldr r4, [r3, #ODR]
+		movs r5,#1
+		lsls r5,r5,#9//r5=1<<9
+		ands r5,r4//r5=GPIOC->ODR & (1<<9)
+		subs r5,#1
+		movs r6,#1//r6 = 1
+		cmp r5,r6
+		bne else1: 
+		ldr r7, [r3, #BRR]//r7=GPIOC->BRR
+		lsls r6,r6, #9//r6=1<<9
+		ldr r7, r6//GPIOC->BRR = 1<<9
+		pop{r4-r7, pc}
+		
+	else1:
+		ldr r7, [r3, #BSRR]//r7=GPIOC->BRR
+		lsls r6,r6, #9//r6=1<<9
+		ldr r7, r6//GPIOC->BRR = 1<<9
+		pop{r4-r7, pc}
+
+
+//============================================================================
+// Implement the setup_tim6 subroutine below.  Follow the instructions in the
+// lab text.
+.global setup_tim6
+setup_tim6:
+.global TIM6_DAC_IRQHandler
+.type TIM6_DAC_IRQHandler, %function
+TIM6_DAC_IRQHandler:
+	push {r4-r7, lr}
+	ldr r0, =TIM6
+	ldr r1, [r0, #TIM_SR]
+	ldr r2, =TIM_SR_UIF
+	orrs r1,r2
+	str r1, [r0, #TIM_SR]
+	
+	ldr r0, =RCC
+	ldr r1, [r0, #APB1ENR]
+	ldr r2, =TIM6EN
+	orrs r1,r2
+	str r1, [r0, #APB1ENR]
+	
+	ldr r0, =TIM6
+	ldr r1, =48000-1
+	str r1, [r0, #TIM_PSC]
+	
+	ldr r1, =500-1
+	str r1, [r0, #TIM_ARR]
+	
+	ldr r0, =TIM6
+	ldr r1, [r0, #TIM_DIER]
+	ldr r2, =TIM_DIER_UIE
 	orrs r1, r2
-	str  r1, [r3,#CSR]
-    // Student code goes above
-    pop  {pc}
+	str r1, [r0, #TIM_DIER]
+	
+	ldr r0, =TIM6
+	ldr r1, [r0, #TIM_CR1]
+	ldr r2, = TIM_CR1_CEN
+	orrs r1, r2
+	str r1, [r0, #TIM_CR1]
+	
+	
+	ldr r0, =NVIC
+	ldr r1, =NVIC_ISER
+	ldr r2, =(1<<TIM6_DAC_IRQn)
+	str r2, [r0,r1]
+	
+	pop {r4-r7, pc}
+
+//============================================================================
+// void show_char(int col, char ch) {
+//   GPIOB->ODR = ((col & 7) << 8) | font[ch];
+// }
+.global show_char
+show_char:
+	push {r4-r7,lr}
+	//r0 = col
+	//r1 = ch
+	ldr r3, =GPIOC
+	ldr r4, [r3, #ODR]
+	
+	movs r5,#7//r5 = 7
+	ands r0,r5//r0 = (col & 7)
+	lsls r0,r0,#8//r0 = ((col & 7) << 8)
+	ldr r6, =font
+	ldr r7, [r6, r1]
+	orrs r0,r7
+	str r0, [r3, #ODR]
+	pop {r4-r7,pc}
+//============================================================================
+// nano_wait(int x)
+// Wait the number of nanoseconds specified by x.
+.global nano_wait
+nano_wait:
+	subs r0,#83
+	bgt nano_wait
+	bx lr
+
+//============================================================================
+// This subroutine is provided for you to fill the LED matrix with "AbCdEFgH".
+// It is a very useful subroutine for debugging.  Study it carefully.
+.global fill_alpha
+fill_alpha:
+	push {r4,r5,lr}
+	movs r4,#0
+fillloop:
+	movs r5,#'A' // load the character 'A' (integer value 65)
+	adds r5,r4
+	movs r0,r4
+	movs r1,r5
+	bl   show_char
+	adds r4,#1
+	movs r0,#7
+	ands r4,r0
+	ldr  r0,=1000000
+	bl   nano_wait
+	b    fillloop
+	pop {r4,r5,pc} // not actually reached
+
+//============================================================================
+// void drive_column(int c) {
+//   c = c & 3;
+//   GPIOC->BSRR = 0xf00000 | (1 << (c + 4));
+// }
+.global drive_column
+drive_column:
+	push {r4-r7, lr}
+	movs r1, #3
+	ands r0, r1
+	ldr r2, =GPIOC
+	ldr r3, [r2, #BSRR]
+	movs r4, #0xf00000
+	movs r5,#1
+	adds r0, #4
+	lsls r5,r5,r0
+	orrs r4, r5
+	movs r3, r4
+	str r3, [r2, #BSRR]
+	pop {r4-r7, pc}
+	
+
+//============================================================================
+// int read_rows(void) {
+//   return GPIOC->IDR & 0xf;
+// }
+.global read_rows
+read_rows:
+	ldr r0, =GPIOC
+	ldr r1, [r0, #IDR]
+	movs r2, #0xf
+	ands r1, r2
+	str r1, [r0, #IDR]
 
 
-//==========================================================
-// adjust_priorities
-// Set the priority for EXTI pins 2-3 interrupt to 192.
-// Set the priority for EXTI pins 4-15 interrupt to 128.
-// Do not adjust the priority for any other interrupts.
-.global adjust_priorities
-adjust_priorities:
-    push {lr}
-    // Student code goes below
+//============================================================================
+// void update_history(int c, int r) {
+//   c = c & 3;
+//   for(int n=0; n<4; n++) {
+//     history[4*c + n] <<= 1;
+//     history[4*c + n] |= (r>>n) & 1;
+//   }
+// }
+.global update_history
+update_history:
+	//r0 = c
+	//r1 = r
+	movs r2, #3
+	ands r0, r2//r0 = c = c & 3
+	movs r3,#0//r3=i
+	for1:
+		
+		
 
-    // Student code goes above
-    pop  {pc}
 
-//==========================================================
-// The main subroutine will call everything else.
-// It will never return.
+//============================================================================
+// TIM7_ISR() {
+//    TIM7->SR &= ~TIM_SR_UIF
+//    update_history(col);
+//    show_char(col, disp[col])
+//    col = col + 1;
+//    drive_column(col);
+// }
+
+
+
+//============================================================================
+// Implement the setup_tim7 subroutine below.  Follow the instructions
+// in the lab text.
+.global setup_tim7
+setup_tim7:
+
+
+//============================================================================
+// int wait_for(char val) {
+//   for(;;) {
+//     wfi
+//     for(int n=0; n<16; n++)
+//       if (hist[n] == val)
+//         return n;
+//   }
+// }
+.global wait_for
+wait_for:
+
+
+//============================================================================
+// void shift_display() {
+//   for(int i=0; i<7; i++)
+//     disp[i] = disp[i+1];
+// }
+.global shift_display
+shift_display:
+
+
+//============================================================================
+// This subroutine is provided for you to call the functions you wrote.
+// It waits for a key to be pressed.  When it finds one, it immediately
+// shifts the display left, looks up the character for the key, and writes
+// the new character in the rightmost element of disp.
+// Then it waits for a key to be released.
+.global display_key
+display_key:
+	push {r4,lr}
+	movs r0,#1
+	bl   wait_for
+
+	movs r4,r0
+	bl   shift_display
+	ldr  r0,=disp
+	ldr  r2,=keymap
+	ldrb r1,[r2,r4]
+	strb r1,[r0,#7]
+
+	movs r0,#0xfe
+	bl   wait_for
+
+	pop {r4,pc}
+
+.global login
+login: .string "xyz" // Replace with your login.
+.balign 2
+
 .global main
 main:
-    bl autotest // Uncomment when most things are working
-    bl initb
-    bl initc
-    bl init_exti
-    bl init_systick
-    bl adjust_priorities
+	//bl autotest
+	bl enable_ports
+	bl setup_tim6
+	// bl fill_alpha
+	// bl setup_tim7
+display_loop:
+	// bl display_key
+	nop
+	b  display_loop
+	// Does not return.
 
-endless_loop:
-    ldr  r0,=GPIOC
-    movs r1,#9
-    bl   togglexn
-    ldr  r0,=500000000
-    bl   nano_wait
-    b    endless_loop
+
+//============================================================================
+// Map the key numbers in the history array to characters.
+// We just use a string for this.
+.global keymap
+keymap:
+.string "DCBA#9630852*741"
+
+//============================================================================
+// This table is a *font*.  It provides a mapping between ASCII character
+// numbers and the LED segments to illuminate for those characters.
+// For instance, the character '2' has an ASCII value 50.  Element 50
+// of the font array should be the 8-bit pattern to illuminate segments
+// A, B, D, E, and G.  Spread out, those patterns would correspond to:
+//   .GFEDCBA
+//   01011011 = 0x5b
+// Accessing the element 50 of the font table will retrieve the value 0x5b.
+//
+.global font
+font:
+.space 32
+.byte  0x00 // 32: space
+.byte  0x86 // 33: exclamation
+.byte  0x22 // 34: double quote
+.byte  0x76 // 35: octothorpe
+.byte  0x00 // dollar
+.byte  0x00 // percent
+.byte  0x00 // ampersand
+.byte  0x20 // 39: single quote
+.byte  0x39 // 40: open paren
+.byte  0x0f // 41: close paren
+.byte  0x49 // 42: asterisk
+.byte  0x00 // plus
+.byte  0x10 // 44: comma
+.byte  0x40 // 45: minus
+.byte  0x80 // 46: period
+.byte  0x00 // slash
+.byte  0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07
+.byte  0x7f, 0x67
+.space 7
+// Uppercase alphabet
+.byte  0x77, 0x7c, 0x39, 0x5e, 0x79, 0x71, 0x6f, 0x76, 0x30, 0x1e, 0x00, 0x38, 0x00
+.byte  0x37, 0x3f, 0x73, 0x7b, 0x31, 0x6d, 0x78, 0x3e, 0x00, 0x00, 0x00, 0x6e, 0x00
+.byte  0x39 // 91: open square bracket
+.byte  0x00 // backslash
+.byte  0x0f // 93: close square bracket
+.byte  0x00 // circumflex
+.byte  0x08 // 95: underscore
+.byte  0x20 // 96: backquote
+// Lowercase alphabet
+.byte  0x5f, 0x7c, 0x58, 0x5e, 0x79, 0x71, 0x6f, 0x74, 0x10, 0x0e, 0x00, 0x30, 0x00
+.byte  0x54, 0x5c, 0x73, 0x7b, 0x50, 0x6d, 0x78, 0x1c, 0x00, 0x00, 0x00, 0x6e, 0x00
+.balign 2
+
+//============================================================================
+// Data structures for this experiment.
+// Guard bytes are placed between variables so that autotest can (potentially)
+// detect corruption caused by bad updates.
+//
+.data
+.global col
+.global hist
+.global disp
+guard1: .byte 0
+disp: .string "Hello..."
+guard2: .byte 0
+col: .byte 0
+guard3: .byte 0
+hist: .byte 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+guard4: .byte 0
