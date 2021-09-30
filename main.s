@@ -75,7 +75,7 @@ enable_ports:
 ldr r0, =RCC
 ldr r1, [r0, #AHBENR]
 ldr r2, =IOPBEN
-orrs r1,r2
+orrs  r1,r2
 str r1, [r0, #AHBENR]//enable GPIOB
 
 ldr r0, =RCC
@@ -96,19 +96,17 @@ ldr r2, =out4_7_9
 orrs r1, r2
 str r1, [r0, #MODER]
 
-ldr r0, =GPIOC
-ldr r1, [r0, #MODER]
-ldr r2, =in0_3
-orrs r1,r2
-str r1, [r0, #MODER]
+//ldr r0, =GPIOC
+//ldr r1, [r0, #MODER]
+//ldr r2, =in0_3
+//orrs r1,r2
+//str r1, [r0, #MODER]
 
 ldr r0, =GPIOC
 ldr r1, [r0, #PUPDR]
 ldr r2, =plin0_3
 orrs r1,r2
 str r1, [r0, #PUPDR]
-
-
 
 
 //============================================================================
@@ -119,8 +117,9 @@ str r1, [r0, #PUPDR]
 //   else
 //     GPIOC->BSRR = 1<<9;
 // }
-.global TIM6_ISR
-TIM6_ISR:
+.global TIM6_DAC_IRQHandler
+.type TIM6_DAC_IRQHandler, %function
+TIM6_DAC_IRQHandler:
 	push {r4-r7, lr}
 	ldr r0, =TIM6
 	ldr r1, [r0, TIM_SR]
@@ -128,16 +127,15 @@ TIM6_ISR:
 	bics r1,r2
 	str r1, [r0, TIM_SR]
 
-	if1:
-		ldr r3, =GPIOC
+	ldr r3, =GPIOC
 		ldr r4, [r3, #ODR]// r4 = GPIOC->ODR
 		movs r5,#1
 		lsls r5,r5,#9//r5=1<<9
 		ands r5,r4//r5=GPIOC->ODR & (1<<9)
 		movs r6,#1//r6 = 1
-		subs r5,#1
-		cmp r5,r6
-		bne else1
+	if1:
+		cmp r5,#0
+		beq else1
 		lsls r6,r6, #9//r6=1<<9
 		str r6, [r3, #BRR]//GPIOC->BRR = 1<<9
 		pop {r4-r7, pc}
@@ -153,9 +151,7 @@ TIM6_ISR:
 // lab text.
 .global setup_tim6
 setup_tim6:
-.global TIM6_DAC_IRQHandler
-.type TIM6_DAC_IRQHandler, %function
-TIM6_DAC_IRQHandler:
+
 	push {r4-r7, lr}
 	ldr r0, =TIM6
 	ldr r1, [r0, #TIM_SR]
@@ -212,7 +208,7 @@ show_char:
 	ands r0,r5//r0 = (col & 7)
 	lsls r0,r0,#8//r0 = ((col & 7) << 8)
 	ldr r6, =font
-	ldr r7, [r6, r1]
+	ldrb r7, [r6, r1]//r7=font[ch]
 	orrs r0,r7
 	str r0, [r3, #ODR]
 	pop {r4-r7,pc}
@@ -305,7 +301,7 @@ update_history:
 	ldr r4, =hist//r4=hist[0]
 	lsls r0,r0,#2//r0 = 4*c
 	adds r0,r3//r0 = 4*c+r
-	ldr r7, [r4, r0]//r7 = hist[4*c+r]
+	ldrb r7, [r4, r0]//r7 = hist[4*c+r]
 	movs r5,r7//r7=r5=hist[4*c +r]
 	lsls r5,r5,#1//r5=hist[4*c+r]<<1
 	lsrs r6,r6,r3
@@ -330,6 +326,26 @@ update_history:
 //    drive_column(col);
 // }
 
+.global TIM7_IRQHandler
+.type TIM7_IRQHandler, %function
+TIM7_IRQHandler:
+	push {r4-r7, lr}
+	ldr r0, =TIM7
+	ldr r1, [r0, TIM_SR]
+	ldr r2, =TIM_SR_UIF
+	bics r1,r2
+	str r1, [r0, TIM_SR]
+	
+	ldr r0, =col
+	ldrb r0, [r0]
+	ldr r2, =distp
+	ldrb r1, [r2, r1]
+	bl update_history
+	bl show_char
+	adds r0,#1
+	bl drive_columnj
+	pop {r4-r7, pc}
+	
 
 
 //============================================================================
@@ -337,6 +353,46 @@ update_history:
 // in the lab text.
 .global setup_tim7
 setup_tim7:
+
+
+
+	//ldr r0, =TIM7
+	//ldr r1, [r0, #TIM_SR]
+	//ldr r2, =TIM_SR_UIF
+	//orrs r1,r2
+	//str r1, [r0, #TIM_SR]
+
+	ldr r0, =RCC
+	ldr r1, [r0, #APB1ENR]
+	ldr r2, =TIM7EN
+	orrs r1, r2
+	str r1, [r0, #APB1ENR]
+	
+	ldr r0, =TIM_7
+	ldr r1, =480-1
+	str r1, [r0, #TIM_PSC]
+	
+	ldr r1, =100-1
+	str r1, [r0, #TIM_ARR]
+	
+	ldr r0, =TIM_7
+	ldr r1, [r0, #TIM_DIER]
+	ldr r2, =TIM_DIER_UIE
+	orrs r1, r2
+	str r1, [r0, #TIM_DIER]
+	
+	ldr r0, =NVIC
+	ldr r1, =NVIC_ISER
+	ldr r2, =(1<<TIM7_IRQn)
+	str r2, [r0, r1]
+	
+	ldr r0, =TIM7
+	ldr r1, [r0, #TIM_CR1]
+	ldr r2, =TIM_CR1_CEN
+	orrs r1, r2
+	str r1, [r0, #TIM_CR1]
+	
+	push {r4-r7, pc}
 
 
 //============================================================================
@@ -394,7 +450,7 @@ main:
 	//bl autotest
 	bl enable_ports
 	bl setup_tim6
-	// bl fill_alpha
+	bl fill_alpha
 	// bl setup_tim7
 display_loop:
 	// bl display_key
