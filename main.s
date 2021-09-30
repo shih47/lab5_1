@@ -74,13 +74,13 @@ enable_ports:
 
 ldr r0, =RCC
 ldr r1, [r0, #AHBENR]
-ldr r2, =IOBEN
+ldr r2, =IOPBEN
 orrs r1,r2
 str r1, [r0, #AHBENR]//enable GPIOB
 
 ldr r0, =RCC
 ldr r1, [r0, #AHBENR]
-ldr r2, =IOCEN
+ldr r2, =IOPCEN
 orrs r1,r2
 str r1, [r0, #AHBENR]//enable GPIOC
 
@@ -102,9 +102,9 @@ ldr r2, =in0_3
 orrs r1,r2
 str r1, [r0, #MODER]
 
-ldr r0 =GPIOC
+ldr r0, =GPIOC
 ldr r1, [r0, #PUPDR]
-ldr r2, plin0_3
+ldr r2, =plin0_3
 orrs r1,r2
 str r1, [r0, #PUPDR]
 
@@ -121,33 +121,31 @@ str r1, [r0, #PUPDR]
 // }
 .global TIM6_ISR
 TIM6_ISR:
-	push{r4-r7, lr}
-	ldr r0, TIM6
+	push {r4-r7, lr}
+	ldr r0, =TIM6
 	ldr r1, [r0, TIM_SR]
 	ldr r2, =TIM_SR_UIF
 	bics r1,r2
 	str r1, [r0, TIM_SR]
-	
+
 	if1:
 		ldr r3, =GPIOC
-		ldr r4, [r3, #ODR]
+		ldr r4, [r3, #ODR]// r4 = GPIOC->ODR
 		movs r5,#1
 		lsls r5,r5,#9//r5=1<<9
 		ands r5,r4//r5=GPIOC->ODR & (1<<9)
-		subs r5,#1
 		movs r6,#1//r6 = 1
+		subs r5,#1
 		cmp r5,r6
-		bne else1: 
-		ldr r7, [r3, #BRR]//r7=GPIOC->BRR
+		bne else1
 		lsls r6,r6, #9//r6=1<<9
-		ldr r7, r6//GPIOC->BRR = 1<<9
-		pop{r4-r7, pc}
-		
+		str r6, [r3, #BRR]//GPIOC->BRR = 1<<9
+		pop {r4-r7, pc}
+
 	else1:
-		ldr r7, [r3, #BSRR]//r7=GPIOC->BRR
 		lsls r6,r6, #9//r6=1<<9
-		ldr r7, r6//GPIOC->BRR = 1<<9
-		pop{r4-r7, pc}
+		str r6, [r3, #BSRR]//GPIOC->BRR = 1<<9
+		pop {r4-r7, pc}
 
 
 //============================================================================
@@ -164,38 +162,38 @@ TIM6_DAC_IRQHandler:
 	ldr r2, =TIM_SR_UIF
 	orrs r1,r2
 	str r1, [r0, #TIM_SR]
-	
+
 	ldr r0, =RCC
 	ldr r1, [r0, #APB1ENR]
 	ldr r2, =TIM6EN
 	orrs r1,r2
 	str r1, [r0, #APB1ENR]
-	
+
 	ldr r0, =TIM6
 	ldr r1, =48000-1
 	str r1, [r0, #TIM_PSC]
-	
+
 	ldr r1, =500-1
 	str r1, [r0, #TIM_ARR]
-	
+
 	ldr r0, =TIM6
 	ldr r1, [r0, #TIM_DIER]
 	ldr r2, =TIM_DIER_UIE
 	orrs r1, r2
 	str r1, [r0, #TIM_DIER]
-	
+
 	ldr r0, =TIM6
 	ldr r1, [r0, #TIM_CR1]
 	ldr r2, = TIM_CR1_CEN
 	orrs r1, r2
 	str r1, [r0, #TIM_CR1]
-	
-	
+
+
 	ldr r0, =NVIC
-	ldr r1, =NVIC_ISER
+	ldr r1, =ISER
 	ldr r2, =(1<<TIM6_DAC_IRQn)
 	str r2, [r0,r1]
-	
+
 	pop {r4-r7, pc}
 
 //============================================================================
@@ -207,9 +205,9 @@ show_char:
 	push {r4-r7,lr}
 	//r0 = col
 	//r1 = ch
-	ldr r3, =GPIOC
+	ldr r3, =GPIOB
 	ldr r4, [r3, #ODR]
-	
+
 	movs r5,#7//r5 = 7
 	ands r0,r5//r0 = (col & 7)
 	lsls r0,r0,#8//r0 = ((col & 7) << 8)
@@ -260,7 +258,7 @@ drive_column:
 	ands r0, r1
 	ldr r2, =GPIOC
 	ldr r3, [r2, #BSRR]
-	movs r4, #0xf00000
+	ldr r4, =#0xf00000
 	movs r5,#1
 	adds r0, #4
 	lsls r5,r5,r0
@@ -268,7 +266,7 @@ drive_column:
 	movs r3, r4
 	str r3, [r2, #BSRR]
 	pop {r4-r7, pc}
-	
+
 
 //============================================================================
 // int read_rows(void) {
@@ -293,14 +291,34 @@ read_rows:
 // }
 .global update_history
 update_history:
+	push {r4-r7,lr}
 	//r0 = c
 	//r1 = r
 	movs r2, #3
 	ands r0, r2//r0 = c = c & 3
-	movs r3,#0//r3=i
-	for1:
-		
-		
+	movs r3,#0//r3=r
+	for2:
+	movs r6, #4
+	cmp r0, r6
+	bge done2
+	movs r6, r1
+	ldr r4, =hist//r4=hist[0]
+	lsls r0,r0,#2//r0 = 4*c
+	adds r0,r3//r0 = 4*c+r
+	ldr r7, [r4, r0]//r7 = hist[4*c+r]
+	movs r5,r7//r7=r5=hist[4*c +r]
+	lsls r5,r5,#1//r5=hist[4*c+r]<<1
+	lsrs r6,r6,r3
+	movs r2, #1
+	ands r6, r2//r6 = ((rows>>r)&1)
+	adds r5, r5, r1
+	str r5, [r4,r0]
+
+	adds r1,#1
+	b for2
+
+	done2:
+		pop {r4-r7,pc}
 
 
 //============================================================================
@@ -368,7 +386,7 @@ display_key:
 	pop {r4,pc}
 
 .global login
-login: .string "xyz" // Replace with your login.
+login: .string "shih47" // Replace with your login.
 .balign 2
 
 .global main
