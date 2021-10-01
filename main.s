@@ -128,30 +128,30 @@ str r1, [r0, #PUPDR]
 .global TIM6_DAC_IRQHandler
 .type TIM6_DAC_IRQHandler, %function
 TIM6_DAC_IRQHandler:
-	push {r4-r7, lr}
-	ldr r0, =TIM6
-	ldr r1, [r0, TIM_SR]
-	ldr r2, =TIM_SR_UIF
-	bics r1,r2
-	str r1, [r0, TIM_SR]
+    push {r4-r7, lr}
+    ldr r0, =TIM6
+    ldr r1, [r0, TIM_SR]
+    ldr r2, =TIM_SR_UIF
+    bics r1,r2
+    str r1, [r0, TIM_SR]
 
-	ldr r3, =GPIOC
-		ldr r4, [r3, #ODR]// r4 = GPIOC->ODR
-		movs r5,#1
-		lsls r5,r5,#9//r5=1<<9
-		ands r5,r4//r5=GPIOC->ODR & (1<<9)
-		movs r6,#1//r6 = 1
-	if1:
-		cmp r5,#0
-		beq else1
-		lsls r6,r6, #9//r6=1<<9
-		str r6, [r3, #BRR]//GPIOC->BRR = 1<<9
-		pop {r4-r7, pc}
+    ldr r3, =GPIOC
+        ldr r4, [r3, #ODR]// r4 = GPIOC->ODR
+        movs r5,#1
+        lsls r5,r5,#9//r5=1<<9
+        ands r5,r4//r5=GPIOC->ODR & (1<<9)
+        movs r6,#1//r6 = 1
+    if1:
+        cmp r5,#0
+        beq else1
+        lsls r6,r6, #9//r6=1<<9
+        str r6, [r3, #BRR]//GPIOC->BRR = 1<<9
+        pop {r4-r7, pc}
 
-	else1:
-		lsls r6,r6, #9//r6=1<<9
-		str r6, [r3, #BSRR]//GPIOC->BRR = 1<<9
-		pop {r4-r7, pc}
+    else1:
+        lsls r6,r6, #9//r6=1<<9
+        str r6, [r3, #BSRR]//GPIOC->BRR = 1<<9
+        pop {r4-r7, pc}
 
 
 //============================================================================
@@ -160,45 +160,45 @@ TIM6_DAC_IRQHandler:
 .global setup_tim6
 setup_tim6:
 
-	push {r4-r7, lr}
-	ldr r0, =TIM6
-	ldr r1, [r0, #TIM_SR]
-	ldr r2, =TIM_SR_UIF
-	orrs r1,r2
-	str r1, [r0, #TIM_SR]
+    push {r4-r7, lr}
+    ldr r0, =TIM6
+    ldr r1, [r0, #TIM_SR]
+    ldr r2, =TIM_SR_UIF
+    orrs r1,r2
+    str r1, [r0, #TIM_SR]
 
-	ldr r0, =RCC
-	ldr r1, [r0, #APB1ENR]
-	ldr r2, =TIM6EN
-	orrs r1,r2
-	str r1, [r0, #APB1ENR]
+    ldr r0, =RCC
+    ldr r1, [r0, #APB1ENR]
+    ldr r2, =TIM6EN
+    orrs r1,r2
+    str r1, [r0, #APB1ENR]
 
-	ldr r0, =TIM6
-	ldr r1, =48000-1
-	str r1, [r0, #TIM_PSC]
+    ldr r0, =TIM6
+    ldr r1, =48000-1
+    str r1, [r0, #TIM_PSC]
 
-	ldr r1, =500-1
-	str r1, [r0, #TIM_ARR]
+    ldr r1, =500-1
+    str r1, [r0, #TIM_ARR]
 
-	ldr r0, =TIM6
-	ldr r1, [r0, #TIM_DIER]
-	ldr r2, =TIM_DIER_UIE
-	orrs r1, r2
-	str r1, [r0, #TIM_DIER]
+    ldr r0, =TIM6
+    ldr r1, [r0, #TIM_DIER]
+    ldr r2, =TIM_DIER_UIE
+    orrs r1, r2
+    str r1, [r0, #TIM_DIER]
 
-	ldr r0, =TIM6
-	ldr r1, [r0, #TIM_CR1]
-	ldr r2, = TIM_CR1_CEN
-	orrs r1, r2
-	str r1, [r0, #TIM_CR1]
+    ldr r0, =TIM6
+    ldr r1, [r0, #TIM_CR1]
+    ldr r2, = TIM_CR1_CEN
+    orrs r1, r2
+    str r1, [r0, #TIM_CR1]
 
 
-	ldr r0, =NVIC
-	ldr r1, =ISER
-	ldr r2, =(1<<TIM6_DAC_IRQn)
-	str r2, [r0,r1]
+    ldr r0, =NVIC
+    ldr r1, =ISER
+    ldr r2, =(1<<TIM6_DAC_IRQn)
+    str r2, [r0,r1]
 
-	pop {r4-r7, pc}
+    pop {r4-r7, pc}
 
 //============================================================================
 // void show_char(int col, char ch) {
@@ -206,49 +206,49 @@ setup_tim6:
 // }
 .global show_char
 show_char:
-	push {r4-r7,lr}
-	//r0 = col
-	//r1 = ch
-	ldr r3, =GPIOB
-	ldr r4, [r3, #ODR]
+    push {r4-r7,lr}
+    //r0 = col
+    //r1 = ch
+    ldr r3, =GPIOB
+    ldr r4, [r3, #ODR]
 
-	movs r5,#7//r5 = 7
-	ands r0,r5//r0 = (col & 7)
-	lsls r0,r0,#8//r0 = ((col & 7) << 8)
-	ldr r6, =font
-	ldrb r7, [r6, r1]//r7=font[ch]
-	orrs r0,r7
-	str r0, [r3, #ODR]
-	pop {r4-r7,pc}
+    movs r5,#7//r5 = 7
+    ands r0,r5//r0 = (col & 7)
+    lsls r0,r0,#8//r0 = ((col & 7) << 8)
+    ldr r6, =font
+    ldrb r7, [r6, r1]//r7=font[ch]
+    orrs r0,r7
+    str r0, [r3, #ODR]
+    pop {r4-r7,pc}
 //============================================================================
 // nano_wait(int x)
 // Wait the number of nanoseconds specified by x.
 .global nano_wait
 nano_wait:
-	subs r0,#83
-	bgt nano_wait
-	bx lr
+    subs r0,#83
+    bgt nano_wait
+    bx lr
 
 //============================================================================
 // This subroutine is provided for you to fill the LED matrix with "AbCdEFgH".
 // It is a very useful subroutine for debugging.  Study it carefully.
 .global fill_alpha
 fill_alpha:
-	push {r4,r5,lr}
-	movs r4,#0
+    push {r4,r5,lr}
+    movs r4,#0
 fillloop:
-	movs r5,#'A' // load the character 'A' (integer value 65)
-	adds r5,r4
-	movs r0,r4
-	movs r1,r5
-	bl   show_char
-	adds r4,#1
-	movs r0,#7
-	ands r4,r0
-	ldr  r0,=1000000
-	bl   nano_wait
-	b    fillloop
-	pop {r4,r5,pc} // not actually reached
+    movs r5,#'A' // load the character 'A' (integer value 65)
+    adds r5,r4
+    movs r0,r4
+    movs r1,r5
+    bl   show_char
+    adds r4,#1
+    movs r0,#7
+    ands r4,r0
+    ldr  r0,=1000000
+    bl   nano_wait
+    b    fillloop
+    pop {r4,r5,pc} // not actually reached
 
 //============================================================================
 // void drive_column(int c) {
@@ -257,19 +257,19 @@ fillloop:
 // }
 .global drive_column
 drive_column:
-	push {r4-r7, lr}
-	movs r1, #3
-	ands r0, r1
-	ldr r2, =GPIOC
-	ldr r3, [r2, #BSRR]
-	ldr r4, =#0xf00000
-	movs r5,#1
-	adds r0, #4
-	lsls r5,r5,r0
-	orrs r4, r5
-	movs r3, r4
-	str r3, [r2, #BSRR]
-	pop {r4-r7, pc}
+    push {r4-r7, lr}
+    movs r1, #3
+    ands r0, r1
+    ldr r2, =GPIOC
+    ldr r3, [r2, #BSRR]
+    ldr r4, =#0xf00000
+    movs r5,#1
+    adds r0, #4
+    lsls r5,r5,r0
+    orrs r4, r5
+    movs r3, r4
+    str r3, [r2, #BSRR]
+    pop {r4-r7, pc}
 
 
 //============================================================================
@@ -278,14 +278,14 @@ drive_column:
 // }
 .global read_rows
 read_rows:
-	push {r4-r7, lr}
-	ldr r0, =GPIOC
-	ldr r1, [r0, #IDR]
-	movs r2, #0xf
-	ands r1, r2
-	str r1, [r0, #IDR]
-	movs r0, r1
-	pop {r4-r7, pc}
+    push {r4-r7, lr}
+    ldr r0, =GPIOC
+    ldr r1, [r0, #IDR]
+    movs r2, #0xf
+    ands r1, r2
+    str r1, [r0, #IDR]
+    movs r0, r1
+    pop {r4-r7, pc}
 
 
 //============================================================================
@@ -298,43 +298,43 @@ read_rows:
 // }
 .global update_history
 update_history:
-	push {r4-r7,lr}
-	//r0 = c
-	//r1 = rows
-	movs r2, #3
-	ands r0, r2//r0 = c = c & 3
-	movs r3,#0//r3=i=0
-	movs r6, #4
+    push {r4-r7,lr}
+    //r0 = c
+    //r1 = rows
+    movs r2, #3
+    ands r0, r2//r0 = c = c & 3
+    movs r3,#0//r3=i=0
+    movs r6, #4
 
 
-	for2:
-	movs r6,#4
-	cmp r3, r6
-	bge done2
+    for2:
+    cmp r3, #4
+    bge done2
 
-	ldr r4, =hist//r4=hist
-	lsls r5,r0,#2//r5 = 4*c
-	adds r5,r3//r5 = 4*c+i
-	ldrb r7, [r4, r5]//r7 = hist[4*c+i]
-	lsls r7,r7,#1//r7=hist[4*c+i]<<1
-	strb r7, [r4,r5]
-	if2_1:
-		movs r2, #1
-		lsls r2,r2,r3
-		ands r1,r2
-		movs r2, #0
-		adds r3,#1
-		cmp r1,r2
-		beq for2
+    ldr r4, =hist//r4=hist
+    lsls r5,r0,#2//r5 = 4*c
+    adds r5,r3//r5 = 4*c+i
+    ldrb r7, [r4, r5]//r7 = hist[4*c+i]
+    lsls r7,r7,#1//r7=hist[4*c+i]<<1
+    strb r7, [r4,r5]
+    if2_1:
+        movs r2, #1
+        lsls r2,r2,r3
+        movs r6,r1
+        ands r6,r2
+        movs r2, #0
+        adds r3,#1
+        cmp r6,r2
+        beq for2
 
-		movs r2, #1
-		orrs r7, r2
-		strb r7, [r4,r5]
-		b for2
+        movs r2, #1
+        orrs r7, r2
+        strb r7, [r4,r5]
+        b for2
 
 
-	done2:
-		pop {r4-r7,pc}
+    done2:
+        pop {r4-r7,pc}
 
 
 //============================================================================
@@ -349,22 +349,32 @@ update_history:
 .global TIM7_IRQHandler
 .type TIM7_IRQHandler, %function
 TIM7_IRQHandler:
-	push {r4-r7, lr}
-	ldr r0, =TIM7
-	ldr r1, [r0, TIM_SR]
-	ldr r2, =TIM_SR_UIF
-	bics r1,r2
-	str r1, [r0, TIM_SR]
+    push {r4-r7, lr}
+    ldr r0, =TIM7
+    ldr r1, [r0, TIM_SR]
+    ldr r2, =TIM_SR_UIF
+    bics r1,r2
+    str r1, [r0, TIM_SR]
 
-	ldr r0, =col
-	ldrb r0, [r0]
-	ldr r2, =disp
-	ldrb r1, [r2, r1]
-	bl update_history
-	bl show_char
-	adds r0,#1
-	bl drive_column
-	pop {r4-r7, pc}
+    ldr r1, =col
+    ldrb r0, [r1]
+    bl update_history
+
+
+    ldr r1, =col
+    ldrb r0, [r1]
+    ldr r2, =disp
+    ldrb r1, [r2, r0]//r1 = disp[col]
+    bl show_char
+
+    ldr r1, =col
+    ldrb r0, [r1]
+    adds r0,#1
+    movs r3, #7
+    ands r0, r3
+    strb r0,[r1]
+    bl drive_column
+    pop {r4-r7, pc}
 
 
 
@@ -374,45 +384,45 @@ TIM7_IRQHandler:
 .global setup_tim7
 setup_tim7:
 
-	push {r4-r7, lr}
+    push {r4-r7, lr}
 
-	//ldr r0, =TIM7
-	//ldr r1, [r0, #TIM_SR]
-	//ldr r2, =TIM_SR_UIF
-	//orrs r1,r2
-	//str r1, [r0, #TIM_SR]
+    ldr r0, =TIM7
+    ldr r1, [r0, #TIM_SR]
+    ldr r2, =TIM_SR_UIF
+    orrs r1,r2
+    str r1, [r0, #TIM_SR]
 
-	ldr r0, =RCC
-	ldr r1, [r0, #APB1ENR]
-	ldr r2, =TIM7EN
-	orrs r1, r2
-	str r1, [r0, #APB1ENR]
+    ldr r0, =RCC
+    ldr r1, [r0, #APB1ENR]
+    ldr r2, =TIM7EN
+    orrs r1, r2
+    str r1, [r0, #APB1ENR]
 
-	ldr r0, =TIM7
-	ldr r1, =480-1
-	str r1, [r0, #TIM_PSC]
+    ldr r0, =TIM7
+    ldr r1, =480-1
+    str r1, [r0, #TIM_PSC]
 
-	ldr r1, =100-1
-	str r1, [r0, #TIM_ARR]
+    ldr r1, =100-1
+    str r1, [r0, #TIM_ARR]
 
-	ldr r0, =TIM7
-	ldr r1, [r0, #TIM_DIER]
-	ldr r2, =TIM_DIER_UIE
-	orrs r1, r2
-	str r1, [r0, #TIM_DIER]
+    ldr r0, =TIM7
+    ldr r1, [r0, #TIM_DIER]
+    ldr r2, =TIM_DIER_UIE
+    orrs r1, r2
+    str r1, [r0, #TIM_DIER]
 
-	ldr r0, =NVIC
-	ldr r1, =ISER
-	ldr r2, =(1<<TIM7_IRQn)
-	str r2, [r0, r1]
+    ldr r0, =NVIC
+    ldr r1, =ISER
+    ldr r2, =(1<<TIM7_IRQn)
+    str r2, [r0, r1]
 
-	ldr r0, =TIM7
-	ldr r1, [r0, #TIM_CR1]
-	ldr r2, =TIM_CR1_CEN
-	orrs r1, r2
-	str r1, [r0, #TIM_CR1]
+    ldr r0, =TIM7
+    ldr r1, [r0, #TIM_CR1]
+    ldr r2, =TIM_CR1_CEN
+    orrs r1, r2
+    str r1, [r0, #TIM_CR1]
 
-	pop {r4-r7, pc}
+    pop {r4-r7, pc}
 
 
 //============================================================================
@@ -426,26 +436,26 @@ setup_tim7:
 // }
 .global wait_for
 wait_for:
-	push {r4-r7, lr}
-	//r0 = val
-	movs r1, #0//r1 = n = 0
-	movs r2, #16
+    push {r4-r7, lr}
+    //r0 = val
+    movs r1, #0//r1 = n = 0
+    movs r2, #16
 
-	//for3:
-		//wfi
-		for4:
-			cmp r1, r2//
-			bge done4
-			ldr r3, =hist
-			ldr r4, [r3, r1]
-			if3:
-				bne done4
-				movs r0, r1
-				adds r1, #1
-				b for4
+    //for3:
+        //wfi
+        for4:
+            cmp r1, r2//
+            bge done4
+            ldr r3, =hist
+            ldr r4, [r3, r1]
+            if3:
+                bne done4
+                movs r0, r1
+                adds r1, #1
+                b for4
 
-		done4:
-			pop {r4-r7, pc}
+        done4:
+            pop {r4-r7, pc}
 
 //============================================================================
 // void shift_display() {
@@ -454,22 +464,23 @@ wait_for:
 // }
 .global shift_display
 shift_display:
-	push {r4-r7, lr}
-	movs r0, #0//r0 = i
-	movs r1, #7
+    push {r4-r7, lr}
+    movs r0, #0//r0 = i
+    movs r1, #7
 
-	for5:
-		cmp r0,r7
-		bge done4
-		ldr r2, =disp
-		ldr r3, [r2, r0]
-		//ldr r4, [r2, r0, #1]
-		movs r3, r4
+    for5:
+        cmp r0,r1
+        bge done5
+        ldr r2, =disp
+        adds r0,#1
+        ldrb r3, [r2, r0]//r3=disp[i+1]
+        subs r0,#1
+        strb r3, [r2, r0]
+        adds r0,#1
+        b for5
 
-		adds r1,#1
-
-	done5:
-		pop {r4-r7, pc}
+    done5:
+        pop {r4-r7, pc}
 
 
 
@@ -482,21 +493,21 @@ shift_display:
 // Then it waits for a key to be released.
 .global display_key
 display_key:
-	push {r4,lr}
-	movs r0,#1
-	bl   wait_for
+    push {r4,lr}
+    movs r0,#1
+    bl   wait_for
 
-	movs r4,r0
-	bl   shift_display
-	ldr  r0,=disp
-	ldr  r2,=keymap
-	ldrb r1,[r2,r4]
-	strb r1,[r0,#7]
+    movs r4,r0
+    bl   shift_display
+    ldr  r0,=disp
+    ldr  r2,=keymap
+    ldrb r1,[r2,r4]
+    strb r1,[r0,#7]
 
-	movs r0,#0xfe
-	bl   wait_for
+    movs r0,#0xfe
+    bl   wait_for
 
-	pop {r4,pc}
+    pop {r4,pc}
 
 .global login
 login: .string "shih47" // Replace with your login.
@@ -504,16 +515,16 @@ login: .string "shih47" // Replace with your login.
 
 .global main
 main:
-	//bl autotest
-	bl enable_ports
-	bl setup_tim6
-	bl fill_alpha
-	bl setup_tim7
+    bl autotest
+    bl enable_ports
+    bl setup_tim6
+    bl fill_alpha
+    bl setup_tim7
 display_loop:
-	// bl display_key
-	nop
-	b  display_loop
-	// Does not return.
+    // bl display_key
+    nop
+    b  display_loop
+    // Does not return.
 
 
 //============================================================================
