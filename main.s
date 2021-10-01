@@ -161,11 +161,11 @@ TIM6_DAC_IRQHandler:
 setup_tim6:
 
     push {r4-r7, lr}
-    ldr r0, =TIM6
-    ldr r1, [r0, #TIM_SR]
-    ldr r2, =TIM_SR_UIF
-    orrs r1,r2
-    str r1, [r0, #TIM_SR]
+    //ldr r0, =TIM6
+    //ldr r1, [r0, #TIM_SR]
+    //ldr r2, =TIM_SR_UIF
+    //orrs r1,r2
+    //str r1, [r0, #TIM_SR]
 
     ldr r0, =RCC
     ldr r1, [r0, #APB1ENR]
@@ -261,14 +261,14 @@ drive_column:
     movs r1, #3
     ands r0, r1
     ldr r2, =GPIOC
-    ldr r3, [r2, #BSRR]
+    //ldr r3, [r2, #BSRR]
     ldr r4, =#0xf00000
     movs r5,#1
     adds r0, #4
     lsls r5,r5,r0
     orrs r4, r5
-    movs r3, r4
-    str r3, [r2, #BSRR]
+    //movs r3, r4
+    str r4, [r2, #BSRR]
     pop {r4-r7, pc}
 
 
@@ -283,19 +283,21 @@ read_rows:
     ldr r1, [r0, #IDR]
     movs r2, #0xf
     ands r1, r2
-    str r1, [r0, #IDR]
+    //str r1, [r0, #IDR]
     movs r0, r1
     pop {r4-r7, pc}
 
 
 //============================================================================
-// void update_history(int c, int r) {
-//   c = c & 3;
-//   for(int n=0; n<4; n++) {
-//     history[4*c + n] <<= 1;
-//     history[4*c + n] |= (r>>n) & 1;
-//   }
-// }
+//void update_history(int c, int rows)
+//        {
+//            c = c & 3;
+//            for(int i=0; i < 4; i++) {
+//                hist[4*c+i] = hist[4*c+i] << 1;
+//                if ((rows & (1 << i)) != 0)
+//                    hist[4*c+i] |= 1;
+//           }
+//        }
 .global update_history
 update_history:
     push {r4-r7,lr}
@@ -342,7 +344,7 @@ update_history:
 //    TIM7->SR &= ~TIM_SR_UIF
 //    update_history(col);
 //    show_char(col, disp[col])
-//    col = col + 1;
+//    col = (col + 1)&7;
 //    drive_column(col);
 // }
 
@@ -388,11 +390,11 @@ setup_tim7:
 
     push {r4-r7, lr}
 
-    ldr r0, =TIM7
-    ldr r1, [r0, #TIM_SR]
-    ldr r2, =TIM_SR_UIF
-    orrs r1,r2
-    str r1, [r0, #TIM_SR]
+    //ldr r0, =TIM7
+    //ldr r1, [r0, #TIM_SR]
+    //ldr r2, =TIM_SR_UIF
+    //orrs r1,r2
+    //str r1, [r0, #TIM_SR]
 
     ldr r0, =RCC
     ldr r1, [r0, #APB1ENR]
@@ -495,7 +497,11 @@ shift_display:
 // It waits for a key to be pressed.  When it finds one, it immediately
 // shifts the display left, looks up the character for the key, and writes
 // the new character in the rightmost element of disp.
-// Then it waits for a keyolatile ("wfi" : :); is simply the means by which we can embed a WFI instruction into a C program. (See lecture 09 on embedded C for more information.) When writing an assembly language program, you can just type "wfi". When the CPU executes the WFI instruction, it will put the microcontroller into sleep mode. This is a low-power state that is useful for reducing power consumption. Although the CPU is asleep, the peripheral subsystems that have been enabled continue to run. The CPU is awakened from sleep mode by an interrupt to run the ISR. When the ISR returns, the code following the WFI instruction is executed. In this way, the code to evaluate the history array can only happen after an ISR completes.
+// Then it waits for a keyolatile ("wfi" : :); is simply the means by which we can embed a WFI instruction into a C 
+// program. (See lecture 09 on embedded C for more information.) When writing an assembly language program, 
+// you can just type "wfi". When the CPU executes the WFI instruction, it will put the microcontroller into sleep mode.
+// This is a low-power state that is useful for reducing power consumption. 
+// Although the CPU is asleep, the peripheral subsystems that have been enabled continue to run. The CPU is awakened from sleep mode by an interrupt to run the ISR. When the ISR returns, the code following the WFI instruction is executed. In this way, the code to evaluate the history array can only happen after an ISR completes.
 //
 //The important thing to recognize is that this subroutine runs in the context of the main program of the application, and it does not return until an interrupt has happened, and the conditions of the history array constitute a button press.
 //2.4.9: shift_display: Shift all display entries left to be released.
