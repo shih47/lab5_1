@@ -444,20 +444,19 @@ wait_for:
     for3:
         wfi
         movs r1, #0//r1 = n = 0
-    	movs r2, #16
 
         for4:
-            cmp r1, r2//
+            cmp r1, #16
             bge for3
             ldr r3, =hist
-            ldr r4, [r3, r1]
+            ldrb r4, [r3, r1]//r4=hist[n]
             if3:
             	cmp r4, r0
                 bne next4
                 movs r0, r1
-                b done4
+                b done4//break
          next4:
-         	adds r1, #1
+         	adds r1, #1//n=n+1
          	b for4
 
         done4:
@@ -496,7 +495,10 @@ shift_display:
 // It waits for a key to be pressed.  When it finds one, it immediately
 // shifts the display left, looks up the character for the key, and writes
 // the new character in the rightmost element of disp.
-// Then it waits for a key to be released.
+// Then it waits for a keyolatile ("wfi" : :); is simply the means by which we can embed a WFI instruction into a C program. (See lecture 09 on embedded C for more information.) When writing an assembly language program, you can just type "wfi". When the CPU executes the WFI instruction, it will put the microcontroller into sleep mode. This is a low-power state that is useful for reducing power consumption. Although the CPU is asleep, the peripheral subsystems that have been enabled continue to run. The CPU is awakened from sleep mode by an interrupt to run the ISR. When the ISR returns, the code following the WFI instruction is executed. In this way, the code to evaluate the history array can only happen after an ISR completes.
+//
+//The important thing to recognize is that this subroutine runs in the context of the main program of the application, and it does not return until an interrupt has happened, and the conditions of the history array constitute a button press.
+//2.4.9: shift_display: Shift all display entries left to be released.
 .global display_key
 display_key:
     push {r4,lr}
@@ -521,13 +523,13 @@ login: .string "shih47" // Replace with your login.
 
 .global main
 main:
-    //bl autotest
+    bl autotest
     bl enable_ports
     bl setup_tim6
     bl fill_alpha
     bl setup_tim7
 display_loop:
-    // bl display_key
+    bl display_key
     nop
     b  display_loop
     // Does not return.
@@ -602,3 +604,6 @@ col: .byte 0
 guard3: .byte 0
 hist: .byte 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
 guard4: .byte 0
+
+//qqX*7c!rW8Ff%9g$
+//7LJe@nURazAPHjJM
