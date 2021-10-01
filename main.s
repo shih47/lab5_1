@@ -356,8 +356,10 @@ TIM7_IRQHandler:
     bics r1,r2
     str r1, [r0, TIM_SR]
 
-    ldr r1, =col
-    ldrb r0, [r1]
+    bl read_rows
+    movs r1, r0
+    ldr r2, =col
+    ldrb r0, [r2]
     bl update_history
 
 
@@ -438,21 +440,25 @@ setup_tim7:
 wait_for:
     push {r4-r7, lr}
     //r0 = val
-    movs r1, #0//r1 = n = 0
-    movs r2, #16
 
-    //for3:
-        //wfi
+    for3:
+        wfi
+        movs r1, #0//r1 = n = 0
+    	movs r2, #16
+
         for4:
             cmp r1, r2//
-            bge done4
+            bge for3
             ldr r3, =hist
             ldr r4, [r3, r1]
             if3:
-                bne done4
+            	cmp r4, r0
+                bne next4
                 movs r0, r1
-                adds r1, #1
-                b for4
+                b done4
+         next4:
+         	adds r1, #1
+         	b for4
 
         done4:
             pop {r4-r7, pc}
@@ -515,7 +521,7 @@ login: .string "shih47" // Replace with your login.
 
 .global main
 main:
-    bl autotest
+    //bl autotest
     bl enable_ports
     bl setup_tim6
     bl fill_alpha
