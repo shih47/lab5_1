@@ -86,24 +86,32 @@ str r1, [r0, #AHBENR]//enable GPIOC
 
 ldr r0, =GPIOB
 ldr r1, [r0, #MODER]
+ldr r2, =0x3fffff
+bics r1,r2
 ldr r2, =out0_10
 orrs r1,r2
 str r1, [r0, #MODER]
 
 ldr r0, =GPIOC
 ldr r1, [r0, #MODER]
+ldr r2, =0xcff00
+bics r1, r2
 ldr r2, =out4_7_9
 orrs r1, r2
 str r1, [r0, #MODER]
 
-//ldr r0, =GPIOC
-//ldr r1, [r0, #MODER]
-//ldr r2, =in0_3
-//orrs r1,r2
-//str r1, [r0, #MODER]
+ldr r0, =GPIOC
+ldr r1, [r0, #MODER]
+ldr r2, =0xff
+bics r1, r2
+ldr r2, =in0_3
+orrs r1,r2
+str r1, [r0, #MODER]
 
 ldr r0, =GPIOC
 ldr r1, [r0, #PUPDR]
+ldr r2, =0xff
+bics r1, r2
 ldr r2, =plin0_3
 orrs r1,r2
 str r1, [r0, #PUPDR]
@@ -270,11 +278,14 @@ drive_column:
 // }
 .global read_rows
 read_rows:
+	push {r4-r7, lr}
 	ldr r0, =GPIOC
 	ldr r1, [r0, #IDR]
 	movs r2, #0xf
 	ands r1, r2
 	str r1, [r0, #IDR]
+	movs r0, r1
+	pop {r4-r7, pc}
 
 
 //============================================================================
@@ -289,29 +300,38 @@ read_rows:
 update_history:
 	push {r4-r7,lr}
 	//r0 = c
-	//r1 = r
+	//r1 = rows
 	movs r2, #3
 	ands r0, r2//r0 = c = c & 3
-	movs r3,#0//r3=r
-	for2:
+	movs r3,#0//r3=i=0
 	movs r6, #4
-	cmp r0, r6
-	bge done2
-	movs r6, r1
-	ldr r4, =hist//r4=hist[0]
-	lsls r0,r0,#2//r0 = 4*c
-	adds r0,r3//r0 = 4*c+r
-	ldrb r7, [r4, r0]//r7 = hist[4*c+r]
-	movs r5,r7//r7=r5=hist[4*c +r]
-	lsls r5,r5,#1//r5=hist[4*c+r]<<1
-	lsrs r6,r6,r3
-	movs r2, #1
-	ands r6, r2//r6 = ((rows>>r)&1)
-	adds r5, r5, r1
-	str r5, [r4,r0]
 
-	adds r1,#1
-	b for2
+
+	for2:
+	movs r6,#4
+	cmp r3, r6
+	bge done2
+
+	ldr r4, =hist//r4=hist
+	lsls r5,r0,#2//r5 = 4*c
+	adds r5,r3//r5 = 4*c+i
+	ldrb r7, [r4, r5]//r7 = hist[4*c+i]
+	lsls r7,r7,#1//r7=hist[4*c+i]<<1
+	strb r7, [r4,r5]
+	if2_1:
+		movs r2, #1
+		lsls r2,r2,r3
+		ands r1,r2
+		movs r2, #0
+		adds r3,#1
+		cmp r1,r2
+		beq for2
+
+		movs r2, #1
+		orrs r7, r2
+		strb r7, [r4,r5]
+		b for2
+
 
 	done2:
 		pop {r4-r7,pc}
@@ -335,17 +355,17 @@ TIM7_IRQHandler:
 	ldr r2, =TIM_SR_UIF
 	bics r1,r2
 	str r1, [r0, TIM_SR]
-	
+
 	ldr r0, =col
 	ldrb r0, [r0]
-	ldr r2, =distp
+	ldr r2, =disp
 	ldrb r1, [r2, r1]
 	bl update_history
 	bl show_char
 	adds r0,#1
-	bl drive_columnj
+	bl drive_column
 	pop {r4-r7, pc}
-	
+
 
 
 //============================================================================
@@ -354,7 +374,7 @@ TIM7_IRQHandler:
 .global setup_tim7
 setup_tim7:
 
-
+	push {r4-r7, lr}
 
 	//ldr r0, =TIM7
 	//ldr r1, [r0, #TIM_SR]
@@ -367,32 +387,32 @@ setup_tim7:
 	ldr r2, =TIM7EN
 	orrs r1, r2
 	str r1, [r0, #APB1ENR]
-	
-	ldr r0, =TIM_7
+
+	ldr r0, =TIM7
 	ldr r1, =480-1
 	str r1, [r0, #TIM_PSC]
-	
+
 	ldr r1, =100-1
 	str r1, [r0, #TIM_ARR]
-	
-	ldr r0, =TIM_7
+
+	ldr r0, =TIM7
 	ldr r1, [r0, #TIM_DIER]
 	ldr r2, =TIM_DIER_UIE
 	orrs r1, r2
 	str r1, [r0, #TIM_DIER]
-	
+
 	ldr r0, =NVIC
-	ldr r1, =NVIC_ISER
+	ldr r1, =ISER
 	ldr r2, =(1<<TIM7_IRQn)
 	str r2, [r0, r1]
-	
+
 	ldr r0, =TIM7
 	ldr r1, [r0, #TIM_CR1]
 	ldr r2, =TIM_CR1_CEN
 	orrs r1, r2
 	str r1, [r0, #TIM_CR1]
-	
-	push {r4-r7, pc}
+
+	pop {r4-r7, pc}
 
 
 //============================================================================
@@ -406,7 +426,26 @@ setup_tim7:
 // }
 .global wait_for
 wait_for:
+	push {r4-r7, lr}
+	//r0 = val
+	movs r1, #0//r1 = n = 0
+	movs r2, #16
 
+	//for3:
+		//wfi
+		for4:
+			cmp r1, r2//
+			bge done4
+			ldr r3, =hist
+			ldr r4, [r3, r1]
+			if3:
+				bne done4
+				movs r0, r1
+				adds r1, #1
+				b for4
+
+		done4:
+			pop {r4-r7, pc}
 
 //============================================================================
 // void shift_display() {
@@ -415,6 +454,24 @@ wait_for:
 // }
 .global shift_display
 shift_display:
+	push {r4-r7, lr}
+	movs r0, #0//r0 = i
+	movs r1, #7
+
+	for5:
+		cmp r0,r7
+		bge done4
+		ldr r2, =disp
+		ldr r3, [r2, r0]
+		//ldr r4, [r2, r0, #1]
+		movs r3, r4
+
+		adds r1,#1
+
+	done5:
+		pop {r4-r7, pc}
+
+
 
 
 //============================================================================
@@ -451,7 +508,7 @@ main:
 	bl enable_ports
 	bl setup_tim6
 	bl fill_alpha
-	// bl setup_tim7
+	bl setup_tim7
 display_loop:
 	// bl display_key
 	nop
